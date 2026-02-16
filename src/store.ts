@@ -1,4 +1,4 @@
-import { mkdirSync, existsSync, readFileSync, writeFileSync, renameSync } from "node:fs";
+import { mkdirSync, existsSync, readFileSync, writeFileSync, renameSync, copyFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { resolvePaths } from "./paths.ts";
@@ -115,7 +115,16 @@ export function readStore(): Store {
   }
 
   const raw = readFileSync(STORE_PATH, "utf-8");
-  const parsed = JSON.parse(raw) as Partial<Store>;
+  let parsed: Partial<Store>;
+  try {
+    parsed = JSON.parse(raw) as Partial<Store>;
+  } catch {
+    // JSON corrupted — backup and return empty
+    const backupPath = `${STORE_PATH}.corrupt-${Date.now()}`;
+    try { copyFileSync(STORE_PATH, backupPath); } catch { /* ignore */ }
+    console.error(`warning: tasks.json corrupted, backed up to ${backupPath}`);
+    return { tasks: [], events: [] };
+  }
   if (!parsed || !Array.isArray(parsed.tasks)) return { tasks: [], events: [] };
 
   const tasks = parsed.tasks.map((task) => ({
@@ -131,7 +140,10 @@ export function readStore(): Store {
 
 export function writeStore(store: Store): void {
   mkdirSync(dirname(STORE_PATH), { recursive: true });
-  writeFileSync(STORE_PATH, JSON.stringify(store, null, 2) + "\n", "utf-8");
+  const content = JSON.stringify(store, null, 2) + "\n";
+  const tmpPath = `${STORE_PATH}.tmp-${process.pid}-${Date.now()}`;
+  writeFileSync(tmpPath, content, "utf-8");
+  renameSync(tmpPath, STORE_PATH);
 }
 
 export function appendEvent(
