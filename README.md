@@ -1,36 +1,59 @@
-# todai (仮称)
+# todai (working title)
 
-AIエージェント前提のセルフホスト型タスク管理ツール
+Self-hosted task management built for AI-agent-first operations.
 
-## コンセプト
+## Concept
 
-既存のToDo/タスク管理ツールは「人間がUIで操作する前提」で設計されている。todai は **エージェントがファーストクラスの市民** という設計思想で作る。
+Most existing task tools assume a human-operated UI. todai is designed with **agents as first-class actors**.
 
-- 人間もエージェントも対等な「アクター」として扱う
-- CLI first / API first
-- セルフホスト
+- Humans and agents are equal actors
+- CLI-first / API-first
+- Self-hosted
 
-## 要件
+## Requirements
 
 ### Must
 
-- CLI で操作可能（AIエージェントから直接叩ける）
-- アサイン先（エージェント/人間）を自由に登録
-- イベント駆動 → コマンド実行で発火（タスク作成/状態変更/期限等）
+- Operable from CLI (directly callable by AI agents)
+- Flexible assignee registration (agent and/or human)
+- Event-driven execution on changes (task create/state change/due date, etc.)
 
 ### Should
 
-- MCP Server（Claude Code / Gemini CLI 等から直接操作）
-- Webhook によるイベント通知
-- WebUI（ダッシュボード、進捗可視化）
-- Apple リマインダー等との連携（CalDAV?）
+- MCP server support (direct calls from Claude Code / Gemini CLI, etc.)
+- Webhook-based event notifications
+- Web UI (dashboard and progress visibility)
+- Integrations (e.g., Apple Reminders via CalDAV)
 
-## 差別化
+## Differentiation
 
-- タスクのアサイニーが人間 or エージェント or 混在をフラットに扱える
-- エージェントの実行ログ・判断履歴がタスクに紐づく
-- イベント駆動でコマンド実行 → 外部システムとの連携が自由
+- Flat handling of human assignees, agent assignees, or mixed ownership
+- Agent execution logs and decision history linked to tasks
+- Event-driven command execution for flexible external integrations
 
-## 決定ログ
+## Documentation (for current operations)
 
-- 2026-02-11: プロジェクト開始。要件整理完了。
+To avoid duplication, procedures are consolidated into these three docs:
+
+- [Getting Started (5 Minutes)](docs/getting-started.md)
+- [Dogfooding Runbook (Human TUI + Agent CLI)](docs/runbook-dogfooding.md)
+- [Ops Runbook (cron / heartbeat / Prometheus / Grafana + rollback)](docs/runbook-ops.md)
+
+## Architecture
+
+```
+src/
+  index.tsx        — entrypoint (renders Ink App)
+  types.ts         — shared type definitions (Task, Store, Owner, etc.)
+  store.ts         — store layer (readStore/writeStore, addTask/doneTask/updateTask)
+  paths.ts         — path resolution (TODAI_HOME, env overrides)
+  triggers.ts      — event trigger system (convention-based scripts)
+  cli/
+    app.tsx         — CLI command handlers + TUI (Ink/React)
+```
+
+## Decision Log
+
+- 2026-02-11: Project started; requirements clarified.
+- 2026-02-11: Added Prometheus pull MVP (`todai metrics` + `--textfile`).
+- 2026-02-16: Refactored app.tsx — extracted types.ts, store.ts; removed dead code (db/index.ts, archive/schema.ts).
