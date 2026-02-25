@@ -105,3 +105,45 @@ describe("store CRUD", () => {
     expect(open[0].title).toBe("open task");
   });
 });
+
+describe("idempotent add", () => {
+  test("skips creation when non-terminal task with same title exists", async () => {
+    const { addTask, readStore, getTerminalStatuses } = await getStore();
+    addTask("you", "daily standup");
+
+    // Simulate --idempotent check: same title, non-terminal → should find existing
+    const store = readStore();
+    const terminal = new Set(getTerminalStatuses());
+    const existing = store.tasks.find(
+      (task) => task.title === "daily standup" && !terminal.has(task.status),
+    );
+    expect(existing).toBeTruthy();
+    expect(store.tasks.length).toBe(1);
+  });
+
+  test("allows creation when same title exists but is done", async () => {
+    const { addTask, doneTask, readStore, getTerminalStatuses } = await getStore();
+    const t = addTask("you", "daily standup");
+    doneTask(t.id);
+
+    // Simulate --idempotent check: same title but terminal → should NOT find existing
+    const store = readStore();
+    const terminal = new Set(getTerminalStatuses());
+    const existing = store.tasks.find(
+      (task) => task.title === "daily standup" && !terminal.has(task.status),
+    );
+    expect(existing).toBeUndefined();
+  });
+
+  test("allows creation when no task with same title exists", async () => {
+    const { addTask, readStore, getTerminalStatuses } = await getStore();
+    addTask("you", "different task");
+
+    const store = readStore();
+    const terminal = new Set(getTerminalStatuses());
+    const existing = store.tasks.find(
+      (task) => task.title === "daily standup" && !terminal.has(task.status),
+    );
+    expect(existing).toBeUndefined();
+  });
+});

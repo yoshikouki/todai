@@ -116,8 +116,8 @@ Commands:
     Run a quick environment check.
     example: todai doctor
 
-  task add --owner <you|kai|olga|engineer> --title "..." [--space <name>] [--desc "..."] [--priority <low|medium|high|urgent>] [--status <value>] [--label <label> ...] [--parent <taskId>]
-    Add a task (default status=backlog).
+  task add --owner <you|kai|olga|engineer> --title "..." [--space <name>] [--desc "..."] [--priority <low|medium|high|urgent>] [--status <value>] [--label <label> ...] [--parent <taskId>] [--idempotent]
+    Add a task (default status=backlog). --idempotent skips if same title exists (non-terminal).
 
   task list [--owner <you|kai|olga|engineer>] [--status <value>] [--space <name>] [--priority <low|medium|high|urgent>] [--label <label>] [--format text|json] [--fields <csv>]
     List tasks with optional filters.
@@ -269,7 +269,7 @@ function runTaskCommand(args: string[]): string {
 
   if (sub === "add") {
     const flags = parseFlags(args.slice(1));
-    const allowed = new Set(["owner", "title", "space", "desc", "priority", "label", "parent", "status"]);
+    const allowed = new Set(["owner", "title", "space", "desc", "priority", "label", "parent", "status", "idempotent"]);
     for (const key of Object.keys(flags)) {
       if (!allowed.has(key)) throw new Error(`Unknown option: --${key}`);
     }
@@ -282,6 +282,7 @@ function runTaskCommand(args: string[]): string {
     const status = getFlag(flags, "status") ?? "backlog";
     const labels = getFlagAll(flags, "label");
     const parentId = getFlag(flags, "parent");
+    const idempotent = Boolean(getFlag(flags, "idempotent"));
 
     if (!owner) throw new Error("--owner is required");
     if (!title) throw new Error("--title is required");
@@ -289,6 +290,15 @@ function runTaskCommand(args: string[]): string {
     if (!isPriority(priority)) throw new Error(`--priority must be one of: ${PRIORITIES.join("|")}`);
     if (!isStatus(status)) throw new Error(`--status must be one of: ${getKnownStatuses().join("|")}`);
     if (!isSpaceName(space)) throw new Error("--space must match: lowercase alphanumeric + hyphens");
+
+    if (idempotent) {
+      const store = readStore();
+      const terminal = new Set(getTerminalStatuses());
+      const existing = store.tasks.find(
+        (task) => task.title === title && !terminal.has(task.status),
+      );
+      if (existing) return "";
+    }
 
     if (parentId) {
       const store = readStore();
@@ -506,7 +516,7 @@ function runProtocolCommand(): string {
     },
     commands: {
       task: {
-        add: { required: ["owner", "title"], optional: ["space", "desc", "priority", "status", "label", "parent"] },
+        add: { required: ["owner", "title"], optional: ["space", "desc", "priority", "status", "label", "parent", "idempotent"] },
         list: { optional: ["owner", "status", "space", "priority", "label", "format", "fields"], format: ["text", "json"], fields: TASK_LIST_FIELDS },
         done: { required: ["id"] },
         update: { required: ["id"], optional: ["owner", "title", "desc", "space", "priority", "status", "parent", "clear-parent", "label", "clear-labels"] },
