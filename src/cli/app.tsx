@@ -377,7 +377,13 @@ function runTaskCommand(args: string[]): string {
         }
         return row;
       });
-      return JSON.stringify(rows, null, 2);
+      return JSON.stringify(rows, (_key, value) => {
+        if (typeof value === "string") {
+          // Strip control characters (except tab/LF/CR) that break JSON parsers
+          return value.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, " ");
+        }
+        return value;
+      }, 2);
     }
 
     if (filtered.length === 0) return "no tasks";
@@ -794,7 +800,7 @@ export function App({ args }: AppProps) {
   if (command === "doctor") return <Doctor />;
 
   if (command === "task") {
-    try { return <Text>{runTaskCommand(args.slice(1))}</Text>; }
+    try { return <Text wrap="overflow">{runTaskCommand(args.slice(1))}</Text>; }
     catch (error: unknown) { return <Text>{`error: ${error instanceof Error ? error.message : String(error)}`}</Text>; }
   }
 
