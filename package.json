@@ -14,7 +14,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "ink": "^6.7.0",
+    "ink": "^8.0.0",
     "react": "^19.1.0"
   },
   "devDependencies": {
